@@ -1,0 +1,44 @@
+# Data files
+data/*.csv
+data/*.mat
+data/*.h5
+data/*.pkl
+data/processed/
+data/raw/
+
+# Models
+models/*.pkl
+models/*.pth
+models/*.pt
+
+# Results
+results/*.png
+results/*.html
+results/*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
