@@ -284,7 +284,7 @@ def engineer_all_features(
     df = df.replace([np.inf, -np.inf], np.nan)
 
     # Fill NaN from feature engineering
-    df = df.fillna(method="ffill").fillna(0)
+    df = df.ffill().fillna(0)
 
     n_features = len(
         [c for c in df.columns if c not in ["cell_id", "cycle", "type", "soc"]]

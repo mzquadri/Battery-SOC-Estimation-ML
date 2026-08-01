@@ -1,113 +1,75 @@
-# Battery State-of-Charge Estimation using Machine Learning
+# Battery State-of-Charge Estimation with Machine Learning
 
-Machine learning approaches for estimating the State of Charge (SOC) and State of Health (SOH) of Lithium-ion batteries from voltage, current, and temperature measurements. Implements regression, clustering, and hybrid genetic-fuzzy methods.
+An experimental codebase for estimating lithium-ion battery state of charge (SOC) and analysing state of health (SOH) from voltage, current, temperature, and cycle measurements. It contains regression, clustering, feature-engineering, and genetic-fuzzy prototypes.
 
-## Project Overview
+> **Research prototype:** This repository does not include a battery dataset, trained weights, or tracked evaluation outputs. It must not be used to operate a battery-management system or to make safety decisions. The scripts can run against authorized source data or the included deterministic synthetic demonstration generator.
 
-Accurate SOC estimation is critical for Battery Management Systems (BMS) in electric vehicles and energy storage. Traditional methods (Coulomb counting, OCV-based) suffer from accumulation errors and require extensive calibration. This project applies data-driven ML approaches to estimate SOC from measurable battery signals:
+## Included Methods
 
-- **Regression Models**: SVR, Random Forest, Gradient Boosting, and LSTM for direct SOC prediction
-- **Clustering-based Estimation**: K-Means and Gaussian Mixture Models to identify battery operating modes
-- **Genetic-Fuzzy System**: Fuzzy inference system with genetic algorithm-optimized membership functions
-- **Feature Engineering**: Domain-specific features from voltage, current, temperature, and impedance data
-- **Degradation Analysis**: SOH tracking through capacity fade and internal resistance trends
+- SOC regression with SVR, Random Forest, XGBoost, LightGBM, and an LSTM implementation
+- Cycle-aware feature engineering from voltage, current, temperature, and time
+- K-Means and Gaussian-mixture clustering for exploratory operating-regime analysis
+- A genetic-optimized fuzzy SOC estimator
+- Capacity-fade, SOH, resistance, and remaining-useful-life exploratory analyses
 
-## Dataset
+## Data and Evaluation Scope
 
-**NASA Battery Dataset** from [NASA Prognostics Center](https://www.nasa.gov/content/prognostics-center-of-excellence-data-set-repository) / [Kaggle Mirror](https://www.kaggle.com/datasets/patrickfleith/nasa-battery-dataset)
-- Charge/discharge cycles of 18650 Li-ion cells at different temperatures
-- Features: Voltage, Current, Temperature, Capacity, Impedance
-- Multiple cells cycled to end-of-life for degradation studies
+The code accepts compatible NASA Battery Dataset MATLAB files or CSV exports. Obtain and use source data in accordance with its terms; no external data is redistributed here. `src.data_loader.generate_synthetic_battery_data` provides generated discharge cycles only for pipeline development.
+
+Earlier score tables and degradation claims are intentionally not presented here because this repository has no versioned source split, run configuration, model artifact, or metric report to substantiate them. A meaningful benchmark should record the cell identifiers, source-data version, preprocessing parameters, temporal split, random seed, dependency versions, and evaluation artifacts. Synthetic-data results demonstrate code execution only, not battery-estimation performance.
 
 ## Project Structure
 
-```
-Battery-SOC-Estimation-ML/
-├── README.md
-├── requirements.txt
-├── .gitignore
+```text
+.
 ├── src/
-│   ├── __init__.py
-│   ├── data_loader.py           # Battery data loading and preprocessing
-│   ├── feature_engineering.py   # Domain-specific feature extraction
-│   ├── soc_regression.py        # Regression-based SOC estimation
-│   ├── clustering_analysis.py   # Clustering for operating mode identification
-│   ├── genetic_fuzzy.py         # Genetic algorithm-optimized fuzzy system
-│   └── soh_analysis.py          # State of Health degradation tracking
-├── notebooks/
-│   ├── 01_EDA_Battery_Data.ipynb
-│   └── 02_SOC_Estimation_Models.ipynb
-├── data/                        # Dataset directory
-├── models/                      # Saved models
-└── results/                     # Plots and evaluation metrics
+│   ├── data_loader.py          # NASA-compatible loading, cleaning, synthetic demo data
+│   ├── feature_engineering.py  # Signal and cycle features
+│   ├── soc_regression.py       # SOC regression models and metrics
+│   ├── clustering_analysis.py  # K-Means and GMM analysis
+│   ├── genetic_fuzzy.py        # Genetic-fuzzy SOC prototype
+│   └── soh_analysis.py         # Capacity/SOH degradation analysis
+├── notebooks/                  # Exploratory notebooks
+├── data/                       # Local data only; ignored by Git
+├── models/                     # Local model artifacts only; ignored by Git
+├── results/                    # Local run outputs only; ignored by Git
+└── scripts/
+    ├── check_repository.py
+    └── smoke_test.py
 ```
 
 ## Quick Start
 
 ```bash
-# Clone the repository
 git clone https://github.com/mzquadri/Battery-SOC-Estimation-ML.git
 cd Battery-SOC-Estimation-ML
-
-# Install dependencies
+python -m venv .venv
+.venv\Scripts\activate  # Windows PowerShell
 pip install -r requirements.txt
 
-# Run data preprocessing
-python src/data_loader.py --input data/ --output data/processed/
+# Deterministic generated-data pipeline for development only
+python -m src.data_loader --synthetic --output data/processed
+python -m src.feature_engineering --input data/processed/battery_processed.csv --output data/processed/battery_features.csv
+python -m src.soc_regression --model rf --input data/processed/battery_features.csv --output results
 
-# Train SOC regression models
-python src/soc_regression.py --model svr --output results/
-
-# Run clustering analysis
-python src/clustering_analysis.py --n_clusters 4
-
-# Optimize fuzzy system with genetic algorithm
-python src/genetic_fuzzy.py --generations 50 --pop_size 100
+# Repository integrity and core-function smoke checks
+python scripts/check_repository.py
+python scripts/smoke_test.py
 ```
 
-## Results
+Run modules with `python -m src.<module>` rather than `python src/<module>.py`; the analysis modules use package-relative imports. The generated data and outputs above are ignored by Git. Review all changes to preprocessing and generated results before treating a run as comparable to another experiment.
 
-### SOC Estimation Accuracy
+For external data, point `--input` to a compatible MAT file, a CSV file, or a directory containing `battery_data.csv` or `B*.csv` exports. Create features before running a model. Use a temporal cell/cycle split and verify that no cells or cycles leak between train and test sets.
 
-| Model | RMSE (%) | MAE (%) | R² Score | Training Time |
-|-------|----------|---------|----------|---------------|
-| SVR (RBF kernel) | 2.14 | 1.62 | 0.987 | 12s |
-| Random Forest | 1.89 | 1.41 | 0.991 | 8s |
-| Gradient Boosting | 1.72 | 1.28 | 0.993 | 15s |
-| LSTM | 1.45 | 1.08 | 0.995 | 120s |
-| Genetic-Fuzzy | 2.31 | 1.78 | 0.984 | 45s |
+## Dependencies
 
-### Key Findings
-
-- **Temperature sensitivity**: SOC estimation error increases by ~40% at extreme temperatures (0C, 45C)
-- **LSTM advantage**: Captures temporal dependencies in charge/discharge sequences
-- **Genetic-Fuzzy**: Provides interpretable rules for BMS integration
-- **Degradation**: Internal resistance increase of 15% over 800 cycles
-
-## Technical Stack
-
-- **ML**: scikit-learn, XGBoost, LightGBM
-- **Deep Learning**: PyTorch (LSTM)
-- **Optimization**: DEAP (genetic algorithms), scikit-fuzzy
-- **Visualization**: Matplotlib, Seaborn, Plotly
-- **Data**: Pandas, NumPy, SciPy
-
-## Alignment with Experience
-
-This project reflects research experience at **IISER Bhopal** (Summer 2020) working on:
-- Li-ion battery SOC and SOH estimation using data-driven methods
-- Regression and clustering techniques for battery data analysis
-- Genetic-fuzzy hybrid systems for interpretable battery modelling
-- Time-series analysis of charge/discharge cycles
+Core preprocessing and baseline models use NumPy, pandas, SciPy, and scikit-learn. XGBoost, LightGBM, PyTorch, DEAP, and scikit-fuzzy support optional methods; install dependencies from `requirements.txt` before using those paths.
 
 ## References
 
-- Saha, B., & Goebel, K. (2007). Battery Data Set. NASA Prognostics Data Repository.
-- Lipu, M.S.H., et al. (2018). A review of state of health and remaining useful life estimation methods for lithium-ion battery. *Journal of Cleaner Production*.
+- Saha, B., & Goebel, K. (2007). *Battery Data Set*. NASA Prognostics Data Repository.
+- Lipu, M. S. H., et al. (2018). A review of state of health and remaining useful life estimation methods for lithium-ion battery. *Journal of Cleaner Production*.
 
-## Author
+## License
 
-**Mohd Zamin Quadri** - M.Sc. Mathematics in Science and Engineering, Technical University of Munich
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-mohd--zamin-blue)](https://www.linkedin.com/in/mohd-zamin/)
-[![GitHub](https://img.shields.io/badge/GitHub-mzquadri-black)](https://github.com/mzquadri)
+This project is released under the [MIT License](LICENSE).
