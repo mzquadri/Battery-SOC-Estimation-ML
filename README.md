@@ -1,6 +1,6 @@
 # Battery State-of-Charge Estimation with Machine Learning
 
-An experimental codebase for estimating lithium-ion battery state of charge (SOC) and analysing state of health (SOH) from voltage, current, temperature, and cycle measurements. It contains regression, clustering, feature-engineering, and genetic-fuzzy prototypes.
+A lithium-ion battery does not carry a fuel gauge. Its state of charge has to be inferred from voltage, current, temperature, and cycling history, and every one of those signals drifts as the battery ages. This repository experiments with machine-learning ways to make that estimate, and to say something useful about how healthy the battery still is. It brings together regression models, clustering, engineered cycle features, and a genetic-fuzzy prototype in one testable codebase, so that the individual ideas can be compared rather than treated as a black box.
 
 > **Research prototype:** This repository does not include a battery dataset, trained weights, or tracked evaluation outputs. It must not be used to operate a battery-management system or to make safety decisions. The scripts can run against authorized source data or the included deterministic synthetic demonstration generator.
 
@@ -11,6 +11,10 @@ An experimental codebase for estimating lithium-ion battery state of charge (SOC
 - K-Means and Gaussian-mixture clustering for exploratory operating-regime analysis
 - A genetic-optimized fuzzy SOC estimator
 - Capacity-fade, SOH, resistance, and remaining-useful-life exploratory analyses
+
+The figure below shows how the pieces fit together:
+
+![Battery state of charge estimation pipeline](docs/diagrams/pipeline.svg)
 
 ## Data and Evaluation Scope
 

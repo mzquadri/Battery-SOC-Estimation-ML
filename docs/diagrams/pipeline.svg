@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="760" viewBox="0 0 940 760" font-family="Segoe UI, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L9,3 L0,6 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect width="940" height="760" fill="#ffffff"/>
+
+  <!-- Stage 1: data source -->
+  <rect x="270" y="24" width="400" height="66" rx="10" fill="#ffffff" stroke="#ea580c" stroke-width="2"/>
+  <text x="470" y="48" text-anchor="middle" font-size="15" font-weight="bold" fill="#ea580c">src.data_loader</text>
+  <text x="470" y="70" text-anchor="middle" font-size="13" fill="#334155">NASA Battery dataset (MAT / CSV) or deterministic synthetic generator</text>
+
+  <!-- arrow down -->
+  <path d="M470,90 L470,140" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Stage 2: feature engineering -->
+  <rect x="270" y="142" width="400" height="66" rx="10" fill="#ffffff" stroke="#16a34a" stroke-width="2"/>
+  <text x="470" y="166" text-anchor="middle" font-size="15" font-weight="bold" fill="#16a34a">src.feature_engineering</text>
+  <text x="470" y="188" text-anchor="middle" font-size="13" fill="#334155">Cycle-aware features from voltage, current, temperature, time</text>
+
+  <!-- branches to the four analytic methods -->
+  <path d="M470,208 L470,232 L245,232 L245,276" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M470,208 L470,232 L695,232 L695,276" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M470,208 L470,232 L245,232 L245,412" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M470,208 L470,232 L695,232 L695,412" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- analytic methods grid -->
+  <rect x="40" y="278" width="420" height="100" rx="10" fill="#ffffff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="250" y="302" text-anchor="middle" font-size="15" font-weight="bold" fill="#7c3aed">soc_regression.py</text>
+  <text x="250" y="326" text-anchor="middle" font-size="13" fill="#475569">SVR &#183; Random Forest &#183; XGBoost</text>
+  <text x="250" y="346" text-anchor="middle" font-size="13" fill="#475569">LightGBM &#183; LSTM</text>
+
+  <rect x="480" y="278" width="420" height="100" rx="10" fill="#ffffff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="690" y="302" text-anchor="middle" font-size="15" font-weight="bold" fill="#7c3aed">clustering_analysis.py</text>
+  <text x="690" y="326" text-anchor="middle" font-size="13" fill="#475569">K-Means &#183; Gaussian mixtures</text>
+  <text x="690" y="346" text-anchor="middle" font-size="13" fill="#475569">exploratory operating-regime analysis</text>
+
+  <rect x="40" y="414" width="420" height="100" rx="10" fill="#ffffff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="250" y="438" text-anchor="middle" font-size="15" font-weight="bold" fill="#7c3aed">genetic_fuzzy.py</text>
+  <text x="250" y="462" text-anchor="middle" font-size="13" fill="#475569">genetic-optimized fuzzy SOC estimator</text>
+  <text x="250" y="482" text-anchor="middle" font-size="13" fill="#475569">[DEAP + scikit-fuzzy]</text>
+
+  <rect x="480" y="414" width="420" height="100" rx="10" fill="#ffffff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="690" y="438" text-anchor="middle" font-size="15" font-weight="bold" fill="#7c3aed">soh_analysis.py</text>
+  <text x="690" y="462" text-anchor="middle" font-size="13" fill="#475569">capacity fade &#183; SOH &#183; resistance</text>
+  <text x="690" y="482" text-anchor="middle" font-size="13" fill="#475569">remaining-useful-life exploration</text>
+
+  <!-- evaluation arrows -->
+  <path d="M250,378 L250,560" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M690,378 L690,560" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M250,514 L250,560" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M690,514 L690,560" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- evaluation strip -->
+  <rect x="130" y="566" width="680" height="62" rx="10" fill="#16a34a"/>
+  <text x="470" y="592" text-anchor="middle" font-size="15" font-weight="bold" fill="#ffffff">Evaluation</text>
+  <text x="470" y="614" text-anchor="middle" font-size="13" fill="#ecfdf5">MAE &#183; RMSE &#183; R&#178; &#183; calibration &#183; capacity trends over cycles</text>
+
+  <!-- scope chip -->
+  <rect x="150" y="664" width="640" height="56" rx="10" fill="#db2777"/>
+  <text x="470" y="688" text-anchor="middle" font-size="15" font-weight="bold" fill="#ffffff">Research prototype</text>
+  <text x="470" y="708" text-anchor="middle" font-size="13" fill="#fdf2f8">no dataset or weights shipped &#183; not for battery-management-system safety decisions</text>
+</svg>
