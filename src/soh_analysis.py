@@ -6,12 +6,11 @@ charge/discharge cycles to estimate remaining useful life.
 """
 
 import logging
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 from scipy import optimize, stats
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -65,7 +64,7 @@ def fit_linear_degradation(
 
     Returns slope, intercept, and predicted EOL cycle.
     """
-    slope, intercept, r_value, p_value, std_err = stats.linregress(cycles, soh)
+    slope, intercept, r_value, _, _ = stats.linregress(cycles, soh)
 
     # Predict EOL (SOH = 80%)
     eol_cycle = (intercept - 80) / (-slope) if slope < 0 else np.inf
@@ -103,7 +102,7 @@ def fit_exponential_degradation(
 
     try:
         # Initial guesses
-        popt, pcov = optimize.curve_fit(
+        popt, _ = optimize.curve_fit(
             exp_model,
             cycles,
             soh,
@@ -119,7 +118,8 @@ def fit_exponential_degradation(
 
         # Predicted EOL
         if c < 80:
-            eol_func = lambda x: exp_model(x, *popt) - 80
+            def eol_func(x):
+                return exp_model(x, *popt) - 80
             try:
                 from scipy.optimize import brentq
 
@@ -161,7 +161,7 @@ def fit_power_law_degradation(
         return 100 - a * np.power(x + 1, b)  # +1 to avoid 0^b
 
     try:
-        popt, pcov = optimize.curve_fit(
+        popt, _ = optimize.curve_fit(
             power_model,
             cycles,
             soh,
@@ -264,7 +264,7 @@ def estimate_internal_resistance(df: pd.DataFrame) -> pd.DataFrame:
 
 def estimate_rul(
     soh_df: pd.DataFrame,
-    current_cycle: Optional[int] = None,
+    current_cycle: int | None = None,
     eol_threshold: float = 80.0,
 ) -> dict:
     """
@@ -327,7 +327,7 @@ def estimate_rul(
 
 def run_soh_analysis(
     cycle_capacities: pd.DataFrame,
-    battery_data: Optional[pd.DataFrame] = None,
+    battery_data: pd.DataFrame | None = None,
     nominal_capacity: float = 2.0,
 ) -> dict:
     """Run complete SOH analysis pipeline."""

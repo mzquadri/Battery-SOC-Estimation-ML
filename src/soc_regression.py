@@ -12,12 +12,11 @@ import argparse
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import GridSearchCV, cross_val_score
+from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 
 logging.basicConfig(
@@ -93,6 +92,7 @@ def train_svr(
 ) -> RegressionResult:
     """Train Support Vector Regression."""
     import time
+
     from sklearn.svm import SVR
 
     logger.info("Training SVR...")
@@ -157,6 +157,7 @@ def train_random_forest(
 ) -> RegressionResult:
     """Train Random Forest Regression."""
     import time
+
     from sklearn.ensemble import RandomForestRegressor
 
     logger.info("Training Random Forest...")
@@ -224,6 +225,7 @@ def train_xgboost(
 ) -> RegressionResult:
     """Train XGBoost Regression."""
     import time
+
     from xgboost import XGBRegressor
 
     logger.info("Training XGBoost...")
@@ -286,6 +288,7 @@ def train_lightgbm(
 ) -> RegressionResult:
     """Train LightGBM Regression."""
     import time
+
     from lightgbm import LGBMRegressor
 
     logger.info("Training LightGBM...")
@@ -351,6 +354,7 @@ def train_lstm(
 ) -> RegressionResult:
     """Train LSTM neural network for SOC estimation."""
     import time
+
     import torch
     import torch.nn as nn
     from torch.utils.data import DataLoader, TensorDataset

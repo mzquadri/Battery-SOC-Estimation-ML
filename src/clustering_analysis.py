@@ -6,14 +6,14 @@ Uses unsupervised learning to identify distinct operating regimes
 """
 
 import logging
-from typing import Optional
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
+from sklearn.metrics import calinski_harabasz_score, silhouette_score
 from sklearn.mixture import GaussianMixture
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score, calinski_harabasz_score
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -207,7 +207,6 @@ def label_operating_modes(
 
     for _, row in cluster_summary.iterrows():
         cluster_id = row["cluster"]
-        avg_voltage = row.get(voltage_col, 0)
         avg_current = row.get(current_col, 0)
 
         if avg_current > 1.5:

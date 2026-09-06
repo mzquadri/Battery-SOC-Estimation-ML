@@ -8,7 +8,6 @@ cleaning, resampling, and preparing data for ML models.
 import argparse
 import logging
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd

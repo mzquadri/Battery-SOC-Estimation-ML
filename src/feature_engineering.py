@@ -9,7 +9,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-from scipy import signal, stats
+from scipy import stats
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -140,7 +140,7 @@ def compute_thermal_features(df: pd.DataFrame) -> pd.DataFrame:
 
     - Temperature rate of change
     - Deviation from ambient
-    - Temperature × current interaction (Joule heating proxy)
+    - Temperature times current interaction (Joule heating proxy)
     """
     df = df.copy()
 

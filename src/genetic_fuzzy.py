@@ -10,7 +10,6 @@ for Li-ion battery SOC estimation.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -93,7 +92,7 @@ class MamdaniFIS:
 
     def __init__(self):
         self.input_vars: dict[str, FuzzyVariable] = {}
-        self.output_var: Optional[FuzzyVariable] = None
+        self.output_var: FuzzyVariable | None = None
         self.rules: list[FuzzyRule] = []
 
     def add_input(self, var: FuzzyVariable):
@@ -172,7 +171,7 @@ class MamdaniFIS:
 # ---------------------------------------------------------------------------
 
 
-def create_default_soc_fis(mf_params: Optional[dict] = None) -> MamdaniFIS:
+def create_default_soc_fis(mf_params: dict | None = None) -> MamdaniFIS:
     """
     Create a default fuzzy system for SOC estimation from voltage and current.
 
