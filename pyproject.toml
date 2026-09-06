@@ -1,0 +1,23 @@
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# The notebooks are kept byte for byte as they were executed, so that the cells
+# and the outputs below them still correspond. Reformatting them to satisfy style
+# rules would break that, and none of these findings is a defect in code that has
+# already run. They are exploratory and are not part of the verified result.
+"notebooks/*.ipynb" = [
+    "E402", "E501", "E741", "W291", "W293",
+    "I001", "F401", "F541", "C408", "B905", "RUF005",
+]
+# Both scripts put the repository root on sys.path before importing from it,
+# which has to happen after the standard library imports.
+"scripts/figures/generate_figures.py" = ["E402"]
+"scripts/smoke_test.py" = ["E402"]
+# src/genetic_fuzzy.py needs deap and scikit-fuzzy, which are not installed
+# here, so it cannot be executed to confirm a rewrite is behaviour-preserving.
+# Style findings in it are left alone rather than changed unverified.
+"src/genetic_fuzzy.py" = ["B007", "RUF005"]

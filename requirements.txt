@@ -1,27 +1,9 @@
-# Battery SOC Estimation - Dependencies
+# What the reproducible path needs: the benchmark, the tests and the figures.
+# Pinned to the versions the recorded results in results/benchmark.json were
+# produced with. The optional extras below are not needed for any of that.
 
-# Data processing
-pandas>=2.0.0
-numpy>=1.24.0
-scipy>=1.11.0
-
-# Machine Learning
-scikit-learn>=1.3.0
-xgboost>=2.0.0
-lightgbm>=4.0.0
-
-# Deep Learning
-torch>=2.0.0
-
-# Optimization & Fuzzy
-deap>=1.4.0
-scikit-fuzzy>=0.4.2
-
-# Visualization
-matplotlib>=3.7.0
-seaborn>=0.12.0
-plotly>=5.15.0
-
-# Utilities
-tqdm>=4.65.0
-joblib>=1.3.0
+numpy==2.4.3
+pandas==2.3.3
+scikit-learn==1.8.0
+scipy==1.17.0
+matplotlib==3.10.8
