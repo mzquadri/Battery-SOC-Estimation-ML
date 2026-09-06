@@ -11,7 +11,31 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - run: pip install numpy pandas scipy scikit-learn
-      - run: python scripts/check_repository.py
-      - run: python scripts/smoke_test.py
+          python-version: "3.13"
+
+      - name: Install the pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff==0.16.1
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Files present and src compiles
+        run: python scripts/check_repository.py
+
+      - name: Tests
+        run: python -m unittest discover -s tests
+
+      # Reruns the benchmark into a temporary file and checks that every finding
+      # the README argues from still holds, with the numbers compared within a
+      # tolerance. Exact float agreement is not required across platforms.
+      - name: The results still support the same conclusions
+        run: python scripts/check_reproducibility.py
+
+      - name: The figures still render
+        run: python scripts/figures/generate_figures.py
+
+      - name: Smoke test
+        run: python scripts/smoke_test.py
