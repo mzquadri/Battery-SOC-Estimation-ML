@@ -207,10 +207,15 @@ features, but it is not a proof that the remaining 50 contain no subtler ones.
 ## What is exploratory
 
 `src/soc_regression.py`, `src/clustering_analysis.py`, `src/genetic_fuzzy.py` and
-`src/soh_analysis.py` predate the audit above and are not part of the verified
-result. They are not exercised by the tests or by continuous integration.
+`src/soh_analysis.py` predate the audit above and produce none of the numbers in
+this README. Continuous integration compiles them and `scripts/smoke_test.py`
+calls `evaluate_regression` on a two-element array, but nothing checks that their
+model training paths are correct, and none of them has been audited for the
+leakage described above. Their scores, if run, would carry the same circular
+features and would need the same treatment before they meant anything.
+
 `src/genetic_fuzzy.py` needs DEAP and scikit-fuzzy, which are not installed in
-the environment these results were produced in, so it has not been run here.
+the environment these results were produced in, so it has not been run at all.
 
 The two notebooks are kept as they were executed and have not been rerun against
 the current benchmark.
