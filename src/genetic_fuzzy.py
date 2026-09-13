@@ -458,7 +458,29 @@ def predict_soc_fuzzy(
 # CLI
 # ---------------------------------------------------------------------------
 
+def _read(path, produced_by: str):
+    """Read an input this module cannot produce itself, and say so if it is absent.
+
+    These modules consume what src/data_loader.py and src/feature_engineering.py
+    write. Without that file pandas raised a FileNotFoundError traceback naming a
+    path, and nothing named the command that creates it.
+    """
+    from pathlib import Path as _Path
+
+    if not _Path(path).is_file():
+        raise SystemExit(f"  {path} is missing. Produce it with:\n    {produced_by}")
+    return pd.read_csv(path)
+
+
 if __name__ == "__main__":
+    # Relative imports below need the package, so this file has to be run as a
+    # module. Run as a script it raised ImportError with nothing to say what to
+    # do about it, which is an unhelpful way to learn the invocation.
+    if not __package__:
+        raise SystemExit(
+            "Run this as a module, so the package-relative imports resolve:\n"
+            "    python -m src.genetic_fuzzy")
+
     import argparse
 
     parser = argparse.ArgumentParser(description="Genetic-Fuzzy SOC Estimation")
@@ -472,7 +494,9 @@ if __name__ == "__main__":
 
     from .feature_engineering import get_feature_columns
 
-    df = pd.read_csv(args.input)
+    df = _read(args.input,
+               "python src/data_loader.py --synthetic  "
+               "&&  python src/feature_engineering.py")
     feature_cols = get_feature_columns(df)
     X = df[feature_cols].values
     y = df["soc"].values

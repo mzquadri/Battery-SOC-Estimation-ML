@@ -367,7 +367,16 @@ def train_lstm(
     )
     start = time.time()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Asked of each accelerator torch supports rather than only CUDA. torch has
+    # had native XPU support since 2.5 and requirements-optional.txt pins 2.11,
+    # so a machine with an Intel GPU and no NVIDIA one used to fall through to
+    # the CPU with nothing said about why.
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif hasattr(torch, "xpu") and torch.xpu.is_available():
+        device = torch.device("xpu")
+    else:
+        device = torch.device("cpu")
     logger.info("Using device: %s", device)
 
     # Create sequences
@@ -572,7 +581,29 @@ def compare_all_models(
 # CLI
 # ---------------------------------------------------------------------------
 
+def _read(path, produced_by: str):
+    """Read an input this module cannot produce itself, and say so if it is absent.
+
+    These modules consume what src/data_loader.py and src/feature_engineering.py
+    write. Without that file pandas raised a FileNotFoundError traceback naming a
+    path, and nothing named the command that creates it.
+    """
+    from pathlib import Path as _Path
+
+    if not _Path(path).is_file():
+        raise SystemExit(f"  {path} is missing. Produce it with:\n    {produced_by}")
+    return pd.read_csv(path)
+
+
 if __name__ == "__main__":
+    # Relative imports below need the package, so this file has to be run as a
+    # module. Run as a script it raised ImportError with nothing to say what to
+    # do about it, which is an unhelpful way to learn the invocation.
+    if not __package__:
+        raise SystemExit(
+            "Run this as a module, so the package-relative imports resolve:\n"
+            "    python -m src.soc_regression")
+
     parser = argparse.ArgumentParser(description="SOC Regression Models")
     parser.add_argument(
         "--input", type=str, default="data/processed/battery_features.csv"
@@ -590,7 +621,9 @@ if __name__ == "__main__":
     from .data_loader import temporal_train_test_split
     from .feature_engineering import get_feature_columns
 
-    df = pd.read_csv(args.input)
+    df = _read(args.input,
+               "python src/data_loader.py --synthetic  "
+               "&&  python src/feature_engineering.py")
     train_df, test_df = temporal_train_test_split(df, test_cycles=args.test_cycles)
 
     feature_cols = get_feature_columns(df)

@@ -366,6 +366,20 @@ def run_soh_analysis(
 # CLI
 # ---------------------------------------------------------------------------
 
+def _read(path, produced_by: str):
+    """Read an input this module cannot produce itself, and say so if it is absent.
+
+    These modules consume what src/data_loader.py and src/feature_engineering.py
+    write. Without that file pandas raised a FileNotFoundError traceback naming a
+    path, and nothing named the command that creates it.
+    """
+    from pathlib import Path as _Path
+
+    if not _Path(path).is_file():
+        raise SystemExit(f"  {path} is missing. Produce it with:\n    {produced_by}")
+    return pd.read_csv(path)
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -378,7 +392,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, default="results")
     args = parser.parse_args()
 
-    cap_df = pd.read_csv(args.capacities)
+    cap_df = _read(args.capacities, "python src/data_loader.py --synthetic")
     bat_df = pd.read_csv(args.battery_data) if args.battery_data else None
 
     results = run_soh_analysis(cap_df, bat_df, args.nominal_capacity)
