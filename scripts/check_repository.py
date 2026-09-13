@@ -284,6 +284,27 @@ def findings_count_claim(data: dict) -> list[str]:
     return [f"  the README does not say that {total} findings are enforced"]
 
 
+def test_count_claim() -> list[str]:
+    """The README quotes a test count beside the command that produces it.
+
+    Discovered rather than counted from the source, because discovery is what
+    the command in the README and the CI job both do, so it is the number a
+    reader would see. Nothing else here checked it.
+    """
+    import unittest
+
+    suite = unittest.defaultTestLoader.discover(
+        str(ROOT / "tests"), top_level_dir=str(ROOT))
+    total = suite.countTestCases()
+    flat = re.sub(r"\s+", " ", (ROOT / "README.md").read_text(encoding="utf-8"))
+    print(f"  {total} tests discovered")
+    if f"# {total} tests" in flat:
+        return []
+    stated = re.search(r"unittest discover -s tests\s*# (\d+) tests", flat)
+    return [f"  the README says {stated.group(1) if stated else 'no'} tests beside "
+            f"the discover command; discovery finds {total}"]
+
+
 def main() -> int:
     missing = [path for path in REQUIRED_FILES if not (ROOT / path).is_file()]
     if missing:
@@ -310,6 +331,7 @@ def main() -> int:
           f"found in the README")
 
     failures += figure_claims(data)
+    failures += test_count_claim()
     failures += findings_count_claim(data)
 
     for phrase, actual, stated in ratio_claims(data):
