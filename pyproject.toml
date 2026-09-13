@@ -5,10 +5,11 @@ line-length = 100
 select = ["E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
-# The notebooks are kept byte for byte as they were executed, so that the cells
-# and the outputs below them still correspond. Reformatting them to satisfy style
-# rules would break that, and none of these findings is a defect in code that has
-# already run. They are exploratory and are not part of the verified result.
+# The notebooks are exploratory and are not part of the verified result. They are
+# kept as written rather than reformatted to satisfy style rules, which would be
+# a large diff against files no number here depends on. They carry no stored
+# outputs, so there is nothing below the cells for a reformat to fall out of step
+# with.
 "notebooks/*.ipynb" = [
     "E402", "E501", "E741", "W291", "W293",
     "I001", "F401", "F541", "C408", "B905", "RUF005",

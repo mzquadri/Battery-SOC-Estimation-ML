@@ -42,3 +42,6 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Ruff writes its cache here.
+.ruff_cache/

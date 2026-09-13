@@ -1,6 +1,6 @@
-# Only for the exploratory modules, which are not part of the verified result and
-# are not exercised by the tests or by continuous integration. Installing these
-# is not required to reproduce anything in the README.
+# Only for the exploratory modules and the two notebooks, none of which is part
+# of the verified result or exercised by the tests or continuous integration.
+# Installing these is not required to reproduce anything in the README.
 
 -r requirements.txt
 
@@ -9,3 +9,4 @@ torch==2.11.0         # src/soc_regression.py, the LSTM path
 lightgbm>=4.0.0       # src/soc_regression.py, not installed or exercised here
 deap>=1.4.0           # src/genetic_fuzzy.py, not installed or exercised here
 scikit-fuzzy>=0.4.2   # src/genetic_fuzzy.py, not installed or exercised here
+seaborn>=0.12.0       # notebooks/, which nothing else here imports
