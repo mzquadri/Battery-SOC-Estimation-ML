@@ -103,10 +103,15 @@ def compute_voltage_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
 
+    # Computed once, before either branch. It used to be assigned inside the
+    # time branch and read inside the current branch, so a frame carrying voltage
+    # and current but no time raised UnboundLocalError instead of producing the
+    # dV/dQ feature the second branch exists for.
+    dv = df["voltage"].diff() if "voltage" in df.columns else None
+
     if "voltage" in df.columns and "time" in df.columns:
         # dV/dt (voltage rate of change)
         dt = df["time"].diff().replace(0, np.nan)
-        dv = df["voltage"].diff()
         df["dv_dt"] = (dv / dt).fillna(0)
 
         # Second derivative (curvature)
