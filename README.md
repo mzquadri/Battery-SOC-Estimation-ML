@@ -95,12 +95,33 @@ percentage points. Most of that is not scatter. The mean signed error is -0.314,
 so the model reads systematically low, and it reads further low the older the cell
 gets: -0.207 over the first ten held-out cycles, -0.466 over the last ten.
 
-The cause is that all 6,000 test rows sit beyond the training range of the cycle
-index. Mean cycle capacity falls from 1.849 Ah in training to 1.649 Ah in test.
-A tree cannot extrapolate past the range it was fitted on, so it keeps predicting
-the ageing state it last saw. Adding the cycle number as a feature changes the
-error by 0.0007 SOC points, which is consistent with that explanation rather than
-with the model simply lacking the information.
+The cause is not that the model cannot see how old the cell is. It can.
+`cycle_normalized` is the cycle number divided by the highest one, it tracks the
+cycle number exactly, and it sits in the causal feature set. Take it away and the
+error rises to 0.669 SOC points, close to double, with the bias from -0.314 to
+-0.621. At this configuration the ageing information is carrying a large part of
+the result, and the model still drifts while holding it.
+
+How large that is depends on the configuration rather than on the pipeline. At
+half the cycles, or at half the sampling density, the same removal is worth
+almost nothing and the drift is still there. So the number above describes this
+benchmark, not a general property of the setup, and it is the direction that
+carries the argument rather than the size.
+
+What the model cannot do is use that information past the last cycle it was
+fitted on, and all 6,000 test rows are past it. Mean cycle capacity falls from
+1.849 Ah in training to 1.649 Ah in test. A tree cannot extrapolate beyond the
+range it was fitted on, so it keeps predicting the ageing state it last saw.
+
+An earlier version of this section reached that conclusion from an experiment
+that could not have produced any other answer. It appended `cycle` to the causal
+feature set and reported that the error barely moved, reading that as evidence
+the model was not merely lacking the information. Adding a rescaled copy of a
+column the model already has moves the error by 0.0007 SOC points and was never
+going to do anything else. The conclusion survives the correction; the evidence
+offered for it did not, and both comparisons are now recorded in
+`results/benchmark.json` so the difference between them can be read rather than
+argued.
 
 Ridge behaves the opposite way. Its bias stays near zero because a linear fit
 extrapolates the trend, but it fits the nonlinear voltage curve worse, so its
@@ -169,15 +190,31 @@ python scripts/check_repository.py             # README against the recorded res
 python scripts/check_reproducibility.py        # rerun, and check the findings survive
 ```
 
-The benchmark takes about a minute on a laptop and needs no data, no GPU and no
-network.
+The benchmark needs no data, no GPU and no network, and takes a few minutes.
+Most of that is repeated random forest fits: the split and feature comparisons,
+the horizon sweep, the drift blocks and the cycle-index probe each fit their own.
+Feature engineering is about a sixth of it, nearly all of that inside
+`_rolling_slope`, which calls `linregress` once per row per column per window.
 
-Every number in this README is read from `results/benchmark.json`.
-`scripts/check_repository.py` fails if the two stop agreeing, which is what keeps
-a stale README from outliving the results it describes.
+No GPU either, and that is a conclusion rather than an omission. Everything in
+the verified path is scikit-learn, which is CPU-only and has no Intel XPU
+backend, so the accelerator on the machine these results come from cannot be
+reached from here at all. The shape of the work says the same independently: the
+cost is a Python loop calling `linregress` once per row and a sequence of tree
+fits on a few megabytes, and a GPU addresses neither. The one path that could use
+one is the optional LSTM in `src/soc_regression.py`, which asked only about CUDA
+and so never reached an Intel GPU; it asks about XPU as well now, and it produces
+no number here and has been benchmarked on neither device.
+
+Every number in this README is read from `results/benchmark.json`, and so is
+every number drawn on the three figures, which record what they were read from
+inside the files themselves. `scripts/check_repository.py` fails if either stops
+agreeing with the results, or if the test count above stops matching what
+discovery finds. That is what keeps a stale README from outliving the results it
+describes.
 
 `scripts/check_reproducibility.py` reruns the benchmark into a temporary file and
-compares. It holds the sixteen findings the README argues from to exact agreement
+compares. It holds the 19 findings the README argues from to exact agreement
 and the numbers to five percent. That split is deliberate: requiring digit-for-digit
 agreement across platforms fails on thread counts and summation order rather than
 on anything being wrong, while a finding that flips means the README is saying
@@ -203,6 +240,11 @@ cell. Its position in the table is a property of the generator.
 The four excluded features were identified by reading how the target is computed
 and confirmed by measuring single-feature error. That procedure finds circular
 features, but it is not a proof that the remaining 50 contain no subtler ones.
+Two that it did not find, both measured and both small: the rolling statistics
+are computed over the frame rather than within a cycle, so the first rows of the
+test set have windows reaching back into training rows, under one percent of
+them; and `on_plateau` compares each row against a quantile taken over training
+and test together.
 
 ## What is exploratory
 
@@ -211,14 +253,38 @@ features, but it is not a proof that the remaining 50 contain no subtler ones.
 this README. Continuous integration compiles them and `scripts/smoke_test.py`
 calls `evaluate_regression` on a two-element array, but nothing checks that their
 model training paths are correct, and none of them has been audited for the
-leakage described above. Their scores, if run, would carry the same circular
-features and would need the same treatment before they meant anything.
+leakage described above. Their scores carry the same circular features, because
+they take everything `get_feature_columns` returns and nothing removes the four.
+Run once for this review, `python -m src.soc_regression` reports a random forest
+that is essentially perfect on held-out cycles, which is what those four features
+buy and why no number from that module appears here. It took about twenty minutes
+on the full generated set.
 
 `src/genetic_fuzzy.py` needs DEAP and scikit-fuzzy, which are not installed in
-the environment these results were produced in, so it has not been run at all.
+the environment these results were produced in, so its optimisation has not been
+run at all.
 
-The two notebooks are kept as they were executed and have not been rerun against
-the current benchmark.
+All four are modules rather than scripts and are run with `python -m src.<name>`.
+They read what `src/data_loader.py` and `src/feature_engineering.py` write into
+`data/processed/`, which nothing here documented and which no default path
+creates, so each of them now says which command produces its input rather than
+raising a `FileNotFoundError` naming a path. Run as scripts they raised an
+`ImportError` about relative imports; they now say how to invoke them.
+
+The two notebooks have never been saved as executed. Not one cell in either
+carries an execution count or a stored output, so there is nothing in them to
+compare against the current benchmark. Run against currently installable versions
+of what they import, both complete without raising: the first in about fifteen
+seconds, the second in about twenty minutes. Neither produces a number in this
+README, and neither has been audited for the leakage described above.
+
+The first is titled for the NASA dataset and will analyse it if the files are
+present. On a clean clone they are not, so it prints that real data is
+unavailable and generates the same synthetic portfolio as everything else here.
+Its title describes the intent rather than what it does.
+
+Running them needs the extras in `requirements-optional.txt`, including seaborn,
+which nothing else here imports.
 
 ![Pipeline](docs/diagrams/pipeline.svg)
 

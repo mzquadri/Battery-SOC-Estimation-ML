@@ -75,8 +75,20 @@ def findings(data: dict) -> dict:
             data["neighbour_leak_fraction"]["by_cycle"] == 0.0,
         "the random split leaks most of them":
             data["neighbour_leak_fraction"]["random_rows"] > 0.85,
-        "the cycle number does not rescue the drift":
-            abs(data["extrapolation_probe"]["difference"]) < 0.05,
+        "taking the cycle index away makes the drift substantially worse":
+            data["extrapolation_probe"]["cost_of_removing_the_cycle_index"] > 0.1,
+        "adding a second, collinear copy of it changes nothing":
+            abs(data["extrapolation_probe"]["effect_of_adding_a_collinear_copy"]) < 0.05,
+        "the model still cannot follow the drift all the way, index or not":
+            data["extrapolation_probe"]["bias_with_the_cycle_index"] < -0.1,
+        # The probe's middle arm and the headline configuration are the same fit
+        # on the same rows. They are recorded in two places, so they are held to
+        # each other rather than left to drift apart.
+        "the probe's with-index arm is the headline configuration": (
+            abs(data["extrapolation_probe"]["mae_with_the_cycle_index"]
+                - results["by_cycle|causal|random_forest"]["mae_soc_points"]) < 1e-3
+            and abs(data["extrapolation_probe"]["bias_with_the_cycle_index"]
+                    - results["by_cycle|causal|random_forest"]["bias_soc_points"]) < 1e-3),
         "the error is worse on a nearly empty cell than a nearly full one":
             data["error_by_soc_band"][0]["mae_soc_points"]
             > data["error_by_soc_band"][-1]["mae_soc_points"],
@@ -92,6 +104,28 @@ def values(data: dict) -> dict:
     out.update({f"single_feature.{key}": value
                 for key, value in data["single_feature_mae_soc_points"].items()})
     return out
+
+
+
+def report_versions(recorded: dict, fresh: dict) -> None:
+    """Say what produced each of the two files, where either of them says.
+
+    Not a failure either way. Reruns on other builds are expected, and the
+    tolerance below is what decides whether a difference matters. This exists so
+    that a value which has moved can be read against the versions that moved it
+    rather than against a guess.
+    """
+    was = recorded.get("environment", {}).get("libraries")
+    now = fresh.get("environment", {}).get("libraries", {})
+    if not was:
+        print("  the recorded results predate the version record; requirements.txt "
+              "is the only statement of what produced them")
+        print("  this rerun: " + ", ".join(f"{k} {v}" for k, v in now.items()))
+        return
+    moved = [f"{k} {was[k]} -> {now.get(k, 'missing')}"
+             for k in was if was[k] != now.get(k)]
+    print("  produced on different versions: " + ", ".join(moved) if moved
+          else "  same versions as the recorded run")
 
 
 def main() -> int:
@@ -110,6 +144,8 @@ def main() -> int:
             print(completed.stderr[-2000:])
             raise SystemExit(f"  the benchmark failed with exit code {completed.returncode}")
         fresh = json.loads(fresh_path.read_text(encoding="utf-8"))
+
+    report_versions(recorded, fresh)
 
     failures = []
 

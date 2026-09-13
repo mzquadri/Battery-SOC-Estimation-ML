@@ -35,23 +35,48 @@ def load() -> dict:
     return json.loads(RESULTS.read_text(encoding="utf-8"))
 
 
+class Tap:
+    """Reads values out of the recorded results and remembers which it handed over.
+
+    Every recorded number in these figures comes through here, so what is stamped
+    into the PNG is what the figure was drawn from rather than a second list that
+    has to be kept in step by hand. A value the figure stops reading stops being
+    stamped, and one it starts reading is stamped without anyone remembering.
+
+    What this does not cover is figure 02's left panel, which regenerates the
+    portfolio rather than reading the results file. That panel is a scatter of
+    the generator's own output and carries no recorded number.
+    """
+
+    def __init__(self, data: dict) -> None:
+        self._data = data
+        self.read: dict[str, float] = {}
+
+    def __call__(self, *path: str) -> float:
+        node = self._data
+        for key in path:
+            node = node[key]
+        self.read["/".join(path)] = node
+        return node
+
+
 def figure_01_split_and_features(data: dict) -> None:
     """What does the reported error depend on, besides the model?"""
-    results, baselines = data["results"], data["baselines"]
+    take = Tap(data)
 
     rows = [
         ("Random forest, random row split,\nall features", "leaky",
-         results["random_rows|all|random_forest"]["mae_soc_points"]),
+         take("results", "random_rows|all|random_forest", "mae_soc_points")),
         ("Random forest, held-out cycles,\nall features", "leaky",
-         results["by_cycle|all|random_forest"]["mae_soc_points"]),
+         take("results", "by_cycle|all|random_forest", "mae_soc_points")),
         ("Coulomb counting, no model at all", "classical",
-         baselines["coulomb_counting"]["mae_soc_points"]),
+         take("baselines", "coulomb_counting", "mae_soc_points")),
         ("Random forest, random row split,\ncausal features", "leaky",
-         results["random_rows|causal|random_forest"]["mae_soc_points"]),
+         take("results", "random_rows|causal|random_forest", "mae_soc_points")),
         ("Random forest, held-out cycles,\ncausal features", "honest",
-         results["by_cycle|causal|random_forest"]["mae_soc_points"]),
+         take("results", "by_cycle|causal|random_forest", "mae_soc_points")),
         ("Ridge, held-out cycles,\ncausal features", "honest",
-         results["by_cycle|causal|ridge"]["mae_soc_points"]),
+         take("results", "by_cycle|causal|ridge", "mae_soc_points")),
     ]
     rows.sort(key=lambda r: r[2])
 
@@ -102,13 +127,15 @@ def figure_01_split_and_features(data: dict) -> None:
         "minus cumulative amp-hours over cycle capacity, and Coulomb counting is that "
         "definition applied directly, which is why it wins.",
     ])
-    ps.save(fig, FIGURES, "01_split_and_features")
+    ps.save(fig, FIGURES, "01_split_and_features", sources=take.read)
 
 
 def figure_02_circular_feature(data: dict) -> None:
     """Why is one column and a straight line enough?"""
     from src.benchmark import POINTS_PER_CYCLE, SEED
     from src.data_loader import generate_synthetic_battery_data
+
+    take = Tap(data)
 
     raw = generate_synthetic_battery_data(n_cycles=40, points_per_cycle=POINTS_PER_CYCLE,
                                           seed=SEED)
@@ -132,13 +159,12 @@ def figure_02_circular_feature(data: dict) -> None:
     left.set_ylim(-0.02, 1.02)
     ps.clean(left, grid_axis="both")
 
-    single = data["single_feature_mae_soc_points"]
-    honest = data["results"]["by_cycle|causal|random_forest"]["mae_soc_points"]
+    honest = take("results", "by_cycle|causal|random_forest", "mae_soc_points")
     names = ["Normalised time,\none straight line",
-             f"Random forest,\n{data['features']['causal']} causal features",
+             f"Random forest,\n{take('features', 'causal')} causal features",
              "Voltage alone,\none straight line"]
-    values = [single["time_normalized"], honest,
-              data["baselines"]["voltage_only_linear"]["mae_soc_points"]]
+    values = [take("single_feature_mae_soc_points", "time_normalized"), honest,
+              take("baselines", "voltage_only_linear", "mae_soc_points")]
     colours = [ps.AMBER, ps.BLUE, ps.GREEN]
 
     bars = right.bar(np.arange(3), values, color=colours, width=0.56)
@@ -166,12 +192,21 @@ def figure_02_circular_feature(data: dict) -> None:
         "beats a random forest on all fifty causal",
         "features. That is the signature of a circular feature, not of a good model.",
     ])
-    ps.save(fig, FIGURES, "02_circular_feature")
+    ps.save(fig, FIGURES, "02_circular_feature", sources=take.read)
 
 
 def figure_03_drift(data: dict) -> None:
     """Does the error grow as the cell ages past the training cycles?"""
+    take = Tap(data)
     drift = data["drift_past_training"]
+    # Recorded into the tap by hand rather than through the accessor, because
+    # these are lists of blocks rather than single values. Every number the
+    # figure plots is in this loop.
+    for series in ("random_forest", "ridge"):
+        for index, block in enumerate(drift[series]):
+            for key in ("cycles_past_training_from", "cycles_past_training_to",
+                        "bias_soc_points"):
+                take.read[f"drift_past_training/{series}/{index}/{key}"] = block[key]
     #: The far edge of the test window, in cycles past the last training cycle.
     TEST_MARGIN = drift["random_forest"][-1]["cycles_past_training_to"]
 
@@ -217,7 +252,7 @@ def figure_03_drift(data: dict) -> None:
         "stays near unbiased but fits the nonlinear voltage curve worse, so its total "
         "error is larger. Neither shows in one average.",
     ])
-    ps.save(fig, FIGURES, "03_drift_past_training")
+    ps.save(fig, FIGURES, "03_drift_past_training", sources=take.read)
 
 
 def main() -> int:

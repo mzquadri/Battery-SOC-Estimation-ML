@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import json
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+
+#: tEXt key holding the recorded values a figure was drawn from.
+BENCHMARK_KEY = "Benchmark"
 
 PAPER = "#FFFFFF"
 INK = "#111827"
@@ -93,8 +98,21 @@ def footnote(fig, lines, *, y: float = 0.085, x: float = 0.065, size: float = 9.
             print(f"    caption runs off the bottom edge: {line[:58]}...")
 
 
-def save(fig, out_dir, name: str) -> None:
+def save(fig, out_dir, name: str, *, sources: dict | None = None) -> None:
+    """Write the figure, recording which recorded results it was drawn from.
+
+    `sources` goes into the PNG tEXt block, which travels with the file and
+    survives being committed, so scripts/check_repository.py can hold the
+    committed images to results/benchmark.json. A byte comparison cannot do that
+    job: these figures use whichever of the fonts in FONTS the machine has, so
+    the same data rendered here and on a Linux runner shares no bytes at all.
+
+    matplotlib merges this with its own defaults, so the Software entry naming
+    the version that rendered the file is still written.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_dir / f"{name}.png")
+    metadata = None if sources is None else {
+        BENCHMARK_KEY: json.dumps(sources, sort_keys=True)}
+    fig.savefig(out_dir / f"{name}.png", metadata=metadata)
     plt.close(fig)
     print(f"  wrote {name}.png")

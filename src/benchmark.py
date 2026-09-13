@@ -28,7 +28,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
 from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError, version
 from itertools import pairwise
 from pathlib import Path
 
@@ -63,6 +65,33 @@ CIRCULAR = {
     "energy_wh",           # cumulative power integral, the same quantity scaled by voltage
     "temp_integral",       # expanding mean, carries elapsed time
 }
+
+#: Causal features that are the cycle index wearing a different name.
+#: `cycle_normalized` is `cycle` divided by the highest cycle number, so it
+#: correlates with `cycle` at exactly 1.0 and carries the same information. It is
+#: not circular and it stays in the feature set. It is named here because a probe
+#: that asks what the cycle index is worth has to be able to take it away, and
+#: the version of that probe which shipped could not.
+CYCLE_INDEX = {"cycle_normalized"}
+
+
+#: Recorded beside the results. requirements.txt says it pins the versions the
+#: recorded run was produced with, and until now the results file could say
+#: nothing about whether that was still true. A handful of the values here move
+#: in the last decimal place between machines, so which build produced a file is
+#: worth knowing when two of them disagree.
+RECORDED_LIBRARIES = ("numpy", "pandas", "scikit-learn", "scipy")
+
+
+def library_versions() -> dict:
+    """What produced this run. Absent entries say so rather than being omitted."""
+    out = {"python": platform.python_version()}
+    for name in RECORDED_LIBRARIES:
+        try:
+            out[name] = version(name)
+        except PackageNotFoundError:
+            out[name] = "not installed"
+    return out
 
 
 def soc_mae_points(actual, predicted) -> float:
@@ -232,21 +261,55 @@ def horizon_sensitivity(df, columns, horizons=(6, 25, 50)) -> list:
 
 
 def extrapolation_probe(train, test, columns) -> dict:
-    """Is the drift a missing feature, or an inability to extrapolate?
+    """What is the cycle index worth, and can a tree extrapolate along it?
 
-    If the random forest read low merely because it could not see how old the
-    cell was, handing it the cycle number would fix it. Every test row sits beyond
-    the training range of that column, so a tree cannot extrapolate along it and
-    the error should barely move. Recorded because the alternative explanation is
-    the obvious one and deserves to be ruled out rather than assumed away.
+    Two questions, and the first version of this probe answered neither. It
+    fitted the causal feature set, fitted it again with `cycle` appended, found
+    that the error moved by 0.0007 SOC points, and concluded the model was not
+    merely lacking the ageing information. The error could not have moved:
+    `cycle_normalized` is already in the causal set and correlates with `cycle`
+    at 1.0, so the second fit was handed a rescaled copy of a column it already
+    had. The experiment had one possible outcome.
+
+    Asked properly, by taking the cycle index away rather than adding it twice,
+    the answer is far larger and points the other way. The information is not
+    missing and the model leans on it. What a tree still cannot do is use it past
+    the last cycle it was fitted on, and every test row is past that, which is
+    what leaves the residual drift.
+
+    All three configurations are recorded, so the comparison the README makes can
+    be read off the file rather than taken on trust.
+
+    How much the cycle index is worth depends on the size of the run, measured
+    before the README was written around it. Holding fifty cycles out each time:
+
+        200 cycles, 120 samples each   removing it costs 0.3055 SOC points
+        200 cycles,  60 samples each   0.0504
+        100 cycles, 120 samples each   0.0064
+         24 cycles,  60 samples each   0.0000, to four places
+
+    So the size is a property of this configuration and not of the pipeline, and
+    the tests assert that the experiment can measure it rather than that it comes
+    out large.
     """
-    without = fit_and_score(train, test, columns, "random_forest")
-    with_cycle = fit_and_score(train, test, [*columns, "cycle"], "random_forest")
+    stripped = [c for c in columns if c not in CYCLE_INDEX]
+    without = fit_and_score(train, test, stripped, "random_forest")
+    with_index = fit_and_score(train, test, columns, "random_forest")
+    duplicated = fit_and_score(train, test, [*columns, "cycle"], "random_forest")
     return {
-        "mae_without_cycle_number": round(without["mae_soc_points"], 4),
-        "mae_with_cycle_number": round(with_cycle["mae_soc_points"], 4),
-        "difference": round(
-            with_cycle["mae_soc_points"] - without["mae_soc_points"], 4),
+        "cycle_index_features": sorted(CYCLE_INDEX),
+        "mae_without_the_cycle_index": round(without["mae_soc_points"], 4),
+        "mae_with_the_cycle_index": round(with_index["mae_soc_points"], 4),
+        "mae_with_a_collinear_copy_added": round(duplicated["mae_soc_points"], 4),
+        "bias_without_the_cycle_index": round(without["bias_soc_points"], 4),
+        "bias_with_the_cycle_index": round(with_index["bias_soc_points"], 4),
+        # Positive: the error the model is spared by having the cycle index.
+        "cost_of_removing_the_cycle_index": round(
+            without["mae_soc_points"] - with_index["mae_soc_points"], 4),
+        # What the first version of this probe reported, kept so that the
+        # difference between the two experiments is visible rather than argued.
+        "effect_of_adding_a_collinear_copy": round(
+            duplicated["mae_soc_points"] - with_index["mae_soc_points"], 4),
         "test_rows_beyond_training_cycle_range_fraction": round(
             float((test["cycle"] > train["cycle"].max()).mean()), 4),
     }
@@ -343,10 +406,14 @@ def main(n_cycles: int = N_CYCLES, out: Path = OUT) -> int:
     }
 
     probe = extrapolation_probe(train_cycle, test_cycle, causal_columns)
-    print("\n  is the drift a missing feature or an inability to extrapolate?")
-    print(f"    without the cycle number  MAE {probe['mae_without_cycle_number']:.4f}")
-    print(f"    with the cycle number     MAE {probe['mae_with_cycle_number']:.4f}"
-          f"   (difference {probe['difference']:+.4f})")
+    print("\n  what is the cycle index worth to the model?")
+    print(f"    without it             MAE {probe['mae_without_the_cycle_index']:.4f}"
+          f"   bias {probe['bias_without_the_cycle_index']:+.4f}")
+    print(f"    with it                MAE {probe['mae_with_the_cycle_index']:.4f}"
+          f"   bias {probe['bias_with_the_cycle_index']:+.4f}"
+          f"   worth {probe['cost_of_removing_the_cycle_index']:+.4f}")
+    print(f"    plus a collinear copy  MAE {probe['mae_with_a_collinear_copy_added']:.4f}"
+          f"   changes {probe['effect_of_adding_a_collinear_copy']:+.4f}")
     print(f"    test rows beyond the training range of that column: "
           f"{probe['test_rows_beyond_training_cycle_range_fraction'] * 100:.0f} percent")
 
@@ -384,6 +451,7 @@ def main(n_cycles: int = N_CYCLES, out: Path = OUT) -> int:
     payload = {
         "environment": {
             "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "libraries": library_versions(),
         },
         "data": {
             "source": "generated by src.data_loader.generate_synthetic_battery_data",
