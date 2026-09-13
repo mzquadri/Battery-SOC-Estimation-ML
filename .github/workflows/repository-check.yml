@@ -22,7 +22,10 @@ jobs:
       - name: Lint
         run: ruff check .
 
-      - name: Files present and src compiles
+      # Also compares the committed figures against the committed results, which
+      # is why it runs before the step that regenerates them: afterwards it would
+      # be checking this runner's own output and would pass either way.
+      - name: Files present, src compiles, README and figures match the results
         run: python scripts/check_repository.py
 
       - name: Tests
